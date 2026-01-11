@@ -1,0 +1,39 @@
+sql {
+    driver = "rlm_sql_mysql"
+    dialect = "mysql"
+
+    # Table names expected by the default query templates.
+    client_table = "nas"
+    authcheck_table = "radcheck"
+    authreply_table = "radreply"
+    usergroup_table = "radusergroup"
+    group_attribute = "SQL-Group"
+    groupcheck_table = "radgroupcheck"
+    groupreply_table = "radgroupreply"
+    acct_table1 = "radacct"
+    acct_table2 = "radacct"
+    postauth_table = "radpostauth"
+
+    # RADIUS accounting database
+    server = "120.0.32.68"
+    port = 3306
+    login = "radius"
+    password = "radiuspass"
+    radius_db = "radius"
+
+    read_clients = no
+
+    # Load the standard query templates for MySQL/MariaDB.
+    $INCLUDE ${modconfdir}/${.:name}/main/mysql/queries.conf
+
+    pool {
+        start = 1
+        min = 1
+        max = 5
+        spare = 1
+        uses = 0
+        retry_delay = 30
+        lifetime = 0
+        idle_timeout = 60
+    }
+}

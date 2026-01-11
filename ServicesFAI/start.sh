@@ -3,9 +3,10 @@
 # Démarre le réseau ServicesFAI :
 # - DNS Bind9
 # - Site web (nginx)
-# - Base de données (MariaDB)
+# - DB SQL (MariaDB pour accounting RADIUS)
 # - LDAP (OpenLDAP)
 # - RADIUS (FreeRADIUS)
+# - iPerf3 (test débit)
 
 set -e
 
@@ -100,10 +101,12 @@ docker cp configs/web/index.html         services${SERVICES_ID}_web:/var/www/htm
 docker cp configs/web/site.conf          services${SERVICES_ID}_web:/etc/nginx/sites-available/default
 
 docker cp configs/db/60-bind.cnf         services${SERVICES_ID}_db:/etc/mysql/mariadb.conf.d/60-bind.cnf
+docker cp configs/db/radius-schema.sql   services${SERVICES_ID}_db:/etc/radius-schema.sql
 
 docker cp configs/radius/clients.conf    services${SERVICES_ID}_radius:/etc/freeradius/3.0/clients.conf
 docker cp configs/radius/users           services${SERVICES_ID}_radius:/etc/freeradius/3.0/mods-config/files/authorize
 docker cp configs/radius/mods-available/ldap services${SERVICES_ID}_radius:/etc/freeradius/3.0/mods-available/ldap
+docker cp configs/radius/mods-available/sql services${SERVICES_ID}_radius:/etc/freeradius/3.0/mods-available/sql
 docker cp configs/radius/sites-enabled/default services${SERVICES_ID}_radius:/etc/freeradius/3.0/sites-enabled/default
 
 # Démarrage des services

@@ -15,10 +15,14 @@ until mariadb -uroot -e "SELECT 1" >/dev/null 2>&1; do
 done
 
 mariadb -uroot <<'EOF'
-CREATE DATABASE IF NOT EXISTS services;
-CREATE USER IF NOT EXISTS 'service'@'%' IDENTIFIED BY 'servicepass';
-GRANT ALL PRIVILEGES ON services.* TO 'service'@'%';
+CREATE DATABASE IF NOT EXISTS radius;
+CREATE USER IF NOT EXISTS 'radius'@'%' IDENTIFIED BY 'radiuspass';
+GRANT ALL PRIVILEGES ON radius.* TO 'radius'@'%';
 FLUSH PRIVILEGES;
 EOF
 
-echo "DB up on 120.0.32.68:3306 (user service/servicepass)"
+if [ -f /etc/radius-schema.sql ]; then
+  mariadb -uroot radius < /etc/radius-schema.sql
+fi
+
+echo "DB up on 120.0.32.68:3306 (db radius, user radius/radiuspass)"

@@ -1,9 +1,9 @@
 # Services FAI
 
-Ce dossier déploie quatre services du FAI dans des conteneurs Docker reliés par des namespaces réseau :
+Ce dossier déploie des services du FAI dans des conteneurs Docker reliés par des namespaces réseau :
 - `DNS` : Bind9 servant la zone `services.fai`.
 - `WEB` : nginx.
-- `DB`  : MariaDB ouverte sur le réseau interne (Je sais pas vraiment comment ca fonctionne ce truc).
+- `DB`  : MariaDB (accounting RADIUS).
 - `LDAP` : OpenLDAP (base `dc=fai,dc=lab`).
 - `RADIUS` : FreeRADIUS (auth LDAP + attributs de réponse).
 - `IPERF` : iperf3 serveur de test.
@@ -14,7 +14,7 @@ L'hôte est relié au switch via l'interface `services<ID>_host` en `120.0.32.65
 Les adresses :
 - DNS : `120.0.32.66` (`dns.services.fai`)  
 - Web : `http://120.0.32.67` (`web.services.fai`)  
-- DB  : `120.0.32.68:3306` (`db.services.fai`, user `service` / `servicepass`)
+- DB  : `120.0.32.68:3306` (`sql.services.fai`, user `radius` / `radiuspass`)
 - LDAP: `120.0.32.69:389` (`ldap.services.fai`)
 - RADIUS: `120.0.32.70:1812/1813` (`radius.services.fai`)
 - iPerf3: `120.0.32.71:5201` (`iperf.services.fai`)
@@ -23,7 +23,6 @@ Les adresses :
 - Résolution DNS : `dig @120.0.32.66 web.services.fai`
 - Site web : `curl 120.0.32.67`
 - iPerf3 : `iperf3 -c 120.0.32.71 -t 5`
-- Base de données : `mariadb -h 120.0.32.68 -uservice -pservicepass -e "SHOW DATABASES;"`(tkt)
 - LDAP base DN : `docker exec -it servicesA_web ldapsearch -x -H ldap://120.0.32.69 -D "cn=admin,dc=fai,dc=lab" -w adminpass -b "dc=fai,dc=lab" -s base`
 - LDAP OUs : `docker exec -it servicesA_web ldapsearch -x -H ldap://120.0.32.69 -D "cn=admin,dc=fai,dc=lab" -w adminpass -b "dc=fai,dc=lab" "(objectClass=organizationalUnit)"`
 - LDAP compte RADIUS : `docker exec -it servicesA_web ldapsearch -x -H ldap://120.0.32.69 -D "cn=admin,dc=fai,dc=lab" -w adminpass -b "cn=radius,ou=svc,dc=fai,dc=lab"`
@@ -78,7 +77,7 @@ EOF`
   - FreeRADIUS : `docker exec -it servicesA_radius freeradius -X`
   - PPP/accel-ppp : `docker exec -it fai_peParticulier tail -n 50 /var/log/accel-ppp/accel-ppp.log`
 
-## Accounting RADIUS 
+## Accounting RADIUS (MariaDB)
 - Démarrer FreeRADIUS en debug :
   - `docker exec -it servicesA_radius pkill freeradius`
   - `docker exec -it servicesA_radius freeradius -X`
@@ -88,12 +87,12 @@ EOF`
 - Établir puis couper une session PPPoE (box) :
   - `docker exec -it particulierA_box pppd call fai nodetach debug`
   - Arrêt : `pkill pppd`
-- Vérifier les logs d’accounting :
-  - `docker exec -it servicesA_radius tail -n 50 /var/log/freeradius/radacct/120.0.33.41/detail`
+- Vérifier la base :
+  - `docker exec -it servicesA_db mariadb -uradius -pradiuspass -e "select username, framedipaddress, acctstarttime, acctstoptime, acctsessiontime from radacct order by radacctid desc limit 5;" radius`
 
 ## fichiers de config:
 - Adapter la zone DNS dans `configs/dns/`.
 - Modifier la page web dans `configs/web/index.html`.
-- Ajuster la config MariaDB dans `configs/db/60-bind.cnf` ou l'initialisation dans `scripts/script_db.sh`.
 - LDAP initialisation dans `scripts/script_ldap.sh`.
 - RADIUS clients/utilisateurs dans `configs/radius/`.
+- Schéma SQL dans `configs/db/radius-schema.sql`.
