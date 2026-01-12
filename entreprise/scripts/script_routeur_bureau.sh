@@ -27,6 +27,10 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 ip route add 192.168.49.16/28 via 192.168.49.2  # vers réseau services
 ip route add default via 192.168.49.1            # sortie vers le routeur public
 
+ip rule add from 192.168.49.33 table 100
+ip route add 192.168.49.32/28 dev br0 src 192.168.49.33 table 100
+ip route add default via 192.168.49.1 table 100
+
 # On démarre le service DHCP
 /etc/init.d/isc-dhcp-server start > /dev/null &
 

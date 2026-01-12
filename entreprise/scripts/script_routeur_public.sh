@@ -69,7 +69,7 @@ echo "[INFO] Configuration du firewall"
 PUBLIC_NET="120.0.32.0/20"
 DNS_IP="192.168.49.18"
 WEB_IP="192.168.49.20"
-LAN_NET="192.168.49.0/28"
+LAN_NET="192.168.49.0/24" # /24 a la place de /28 pour permettre aux clients d'aller sur internet
 ### --------------------------------------
 ### 1 — Nettoyage et Politiques par défaut
 ### --------------------------------------
@@ -106,11 +106,11 @@ iptables -A FORWARD -p tcp -d $WEB_IP --dport 80 -m state --state NEW,ESTABLISHE
 # Autoriser tout le trafic qui vient de l'intérieur vers l'extérieur
 iptables -A FORWARD -s $LAN_NET -i br0 -j ACCEPT
 
-# Autoriser le retour du trafic déjà établi (indispensable pour que le LAN reçoive les réponses)
-iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
-
 # Autoriser le traffic provenant du tunnel vpn
 iptables -A FORWARD -s 10.99.0.0/24 -j ACCEPT
+
+# Autoriser le retour du trafic déjà établi (indispensable pour que le LAN reçoive les réponses)
+iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 # NAT : Masquerade pour la sortie sur eth0
 iptables -t nat -A POSTROUTING -s $LAN_NET -o eth0 -j MASQUERADE

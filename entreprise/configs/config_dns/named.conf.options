@@ -1,5 +1,9 @@
 options {
     directory "/etc/bind";
+    forwarders {
+        120.0.32.66;
+    };
+    forward only;
     recursion yes;
     allow-query { any; };
     listen-on { any; };
