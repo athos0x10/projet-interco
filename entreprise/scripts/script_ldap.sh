@@ -70,3 +70,10 @@ ldappasswd -H ldap://192.168.49.21 \
   -s "mdp" \
   "uid=jdoe,ou=People,dc=example,dc=com"
 
+# On reset le password de asmith à mdp
+ldappasswd -H ldap://192.168.49.21 \
+  -D "cn=admin,dc=example,dc=com" \
+  -w "adminpassword" \
+  -s "mdp" \
+  "uid=asmith,ou=People,dc=example,dc=com"
+

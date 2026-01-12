@@ -225,6 +225,13 @@ userPassword: motdepasse123
 mail: jdoe@site.lan
 ```
 
+### Mot de passe pour le ldap
+```
+asmith : mdp
+jdoe : mdp
+```
+
+
 ## Résumé global
 
 - Le **réseau Services** fonctionne avec des **IP fixes**

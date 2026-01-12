@@ -5,6 +5,10 @@ acl "mylan" {
 view "internal" {
     match-clients { any; };
 
+    recursion yes;
+    forwarders { 120.0.32.66; };
+    forward only;
+
     zone "site.lan" {
         type master;
         file "/etc/bind/zones/db.site.lan.internal";
