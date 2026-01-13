@@ -1,5 +1,5 @@
 FROM quay.io/frrouting/frr:master
-RUN echo 'export PS1="\[\e[38;5;196m\]\u\[\e[38;5;202m\]@\[\e[38;5;208m\]\h \[\e[38;5;220m\]\w \[\033[0m\]$ "' >> /root/.bashrc
+RUN echo 'export PS1="\[\e[38;5;161m\]\u\[\e[38;5;197m\]@\[\e[38;5;13m\]\h \[\e[38;5;165m\]\w \[\033[0m\]$ "' >> /root/.bashrc
 RUN echo "alias ip='ip -color=auto'" >> /root/.bashrc
 RUN apk add --no-cache accel-ppp dhcp freeradius-client freeradius-utils tcpdump iperf3 iptables
 # Active OSPF + Zebra (necessaire pour installer les routes dans le kernel)
