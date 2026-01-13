@@ -96,3 +96,41 @@ EOF`
 - LDAP initialisation dans `scripts/script_ldap.sh`.
 - RADIUS clients/utilisateurs dans `configs/radius/`.
 - Schéma SQL dans `configs/db/radius-schema.sql`.
+
+## LDAP DIT (vue arborescente)
+```
+dc=fai,dc=lab
+├── ou=clients
+│   ├── uid=alice
+│   │   ├── objectClass: inetOrgPerson
+│   │   ├── objectClass: faiSubscriber
+│   │   ├── objectClass: faiSubscriberBw
+│   │   ├── objectClass: faiSubscriberBwExt
+│   │   ├── uid / cn / sn
+│   │   ├── userPassword (SSHA)
+│   │   ├── faiFramedIPAddress
+│   │   ├── faiPrimaryDNS
+│   │   ├── faiSecondaryDNS (optional)
+│   │   ├── faiRateLimitDown
+│   │   ├── faiRateLimitUp
+│   │   └── faiRateLimit (ex: 20000/5000)
+│   └── uid=bob
+│       ├── objectClass: inetOrgPerson
+│       ├── objectClass: faiSubscriber
+│       ├── objectClass: faiSubscriberBw
+│       ├── objectClass: faiSubscriberBwExt
+│       ├── uid / cn / sn
+│       ├── userPassword (SSHA)
+│       ├── faiFramedIPAddress
+│       ├── faiPrimaryDNS
+│       ├── faiSecondaryDNS (optional)
+│       ├── faiRateLimitDown
+│       ├── faiRateLimitUp
+│       └── faiRateLimit (ex: 10000/2000)
+└── ou=svc
+    └── cn=radius
+        ├── objectClass: organizationalRole
+        ├── objectClass: simpleSecurityObject
+        ├── cn
+        └── userPassword (SSHA)
+```
