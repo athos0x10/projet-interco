@@ -3,7 +3,10 @@
 # Démarre le réseau ServicesFAI :
 # - DNS Bind9
 # - Site web (nginx)
-# - Base de données (MariaDB)
+# - DB SQL (MariaDB pour accounting RADIUS)
+# - LDAP (OpenLDAP)
+# - RADIUS (FreeRADIUS)
+# - iPerf3 (test débit)
 
 set -e
 
@@ -20,15 +23,24 @@ cd "$(dirname "$0")"
 docker build -q -t services_fai_dns ./images/dns
 docker build -q -t services_fai_web ./images/web
 docker build -q -t services_fai_db ./images/db
+docker build -q -t services_fai_ldap ./images/ldap
+docker build -q -t services_fai_radius ./images/radius
+docker build -q -t services_fai_iperf ./images/iperf
 
 # Containers
 docker create -it --name services${SERVICES_ID}_dns --hostname services${SERVICES_ID}_dns --network none --privileged services_fai_dns
 docker create -it --name services${SERVICES_ID}_web --hostname services${SERVICES_ID}_web --network none --privileged services_fai_web
 docker create -it --name services${SERVICES_ID}_db  --hostname services${SERVICES_ID}_db  --network none --privileged services_fai_db
+docker create -it --name services${SERVICES_ID}_ldap --hostname services${SERVICES_ID}_ldap --network none --privileged services_fai_ldap
+docker create -it --name services${SERVICES_ID}_radius --hostname services${SERVICES_ID}_radius --network none --privileged services_fai_radius
+docker create -it --name services${SERVICES_ID}_iperf --hostname services${SERVICES_ID}_iperf --network none --privileged services_fai_iperf
 
 docker start services${SERVICES_ID}_dns
 docker start services${SERVICES_ID}_web
 docker start services${SERVICES_ID}_db
+docker start services${SERVICES_ID}_ldap
+docker start services${SERVICES_ID}_radius
+docker start services${SERVICES_ID}_iperf
 
 # Expose les netns Docker
 addNetnsList() {
@@ -40,6 +52,9 @@ addNetnsList() {
 addNetnsList services${SERVICES_ID}_dns
 addNetnsList services${SERVICES_ID}_web
 addNetnsList services${SERVICES_ID}_db
+addNetnsList services${SERVICES_ID}_ldap
+addNetnsList services${SERVICES_ID}_radius
+addNetnsList services${SERVICES_ID}_iperf
 
 # Switch
 sudo ip netns add services${SERVICES_ID}_switch
@@ -73,6 +88,9 @@ addLinkToSwitch() {
 addLinkToSwitch services${SERVICES_ID}_dns eth0 dns0
 addLinkToSwitch services${SERVICES_ID}_web eth0 web0
 addLinkToSwitch services${SERVICES_ID}_db  eth0 db0
+addLinkToSwitch services${SERVICES_ID}_ldap eth0 ldap0
+addLinkToSwitch services${SERVICES_ID}_radius eth0 radius0
+addLinkToSwitch services${SERVICES_ID}_iperf eth0 iperf0
 
 # Copie des configs
 docker cp configs/dns/named.conf.options services${SERVICES_ID}_dns:/etc/bind/named.conf.options
@@ -84,10 +102,64 @@ docker cp configs/web/index.html         services${SERVICES_ID}_web:/var/www/htm
 docker cp configs/web/site.conf          services${SERVICES_ID}_web:/etc/nginx/sites-available/default
 
 docker cp configs/db/60-bind.cnf         services${SERVICES_ID}_db:/etc/mysql/mariadb.conf.d/60-bind.cnf
+docker cp configs/db/radius-schema.sql   services${SERVICES_ID}_db:/etc/radius-schema.sql
+
+docker cp configs/radius/clients.conf    services${SERVICES_ID}_radius:/etc/freeradius/3.0/clients.conf
+docker cp configs/radius/users           services${SERVICES_ID}_radius:/etc/freeradius/3.0/mods-config/files/authorize
+docker cp configs/radius/mods-available/ldap services${SERVICES_ID}_radius:/etc/freeradius/3.0/mods-available/ldap
+docker cp configs/radius/mods-available/sql services${SERVICES_ID}_radius:/etc/freeradius/3.0/mods-available/sql
+docker cp configs/radius/sites-enabled/default services${SERVICES_ID}_radius:/etc/freeradius/3.0/sites-enabled/default
 
 # Démarrage des services
 cat scripts/script_dns.sh | docker exec -i services${SERVICES_ID}_dns bash &
 cat scripts/script_web.sh | docker exec -i services${SERVICES_ID}_web bash &
 cat scripts/script_db.sh  | docker exec -i services${SERVICES_ID}_db  bash &
+LDAP_ENV=()
+if [ -n "$CLIENT_A_USER" ]; then
+    LDAP_ENV+=(-e CLIENT_A_USER="$CLIENT_A_USER")
+fi
+if [ -n "$CLIENT_A_PASS" ]; then
+    LDAP_ENV+=(-e CLIENT_A_PASS="$CLIENT_A_PASS")
+fi
+if [ -n "$CLIENT_A_IP" ]; then
+    LDAP_ENV+=(-e CLIENT_A_IP="$CLIENT_A_IP")
+fi
+if [ -n "$CLIENT_A_DNS1" ]; then
+    LDAP_ENV+=(-e CLIENT_A_DNS1="$CLIENT_A_DNS1")
+fi
+if [ -n "$CLIENT_A_DNS2" ]; then
+    LDAP_ENV+=(-e CLIENT_A_DNS2="$CLIENT_A_DNS2")
+fi
+if [ -n "$CLIENT_A_RATE_DOWN" ]; then
+    LDAP_ENV+=(-e CLIENT_A_RATE_DOWN="$CLIENT_A_RATE_DOWN")
+fi
+if [ -n "$CLIENT_A_RATE_UP" ]; then
+    LDAP_ENV+=(-e CLIENT_A_RATE_UP="$CLIENT_A_RATE_UP")
+fi
+if [ -n "$CLIENT_B_USER" ]; then
+    LDAP_ENV+=(-e CLIENT_B_USER="$CLIENT_B_USER")
+fi
+if [ -n "$CLIENT_B_PASS" ]; then
+    LDAP_ENV+=(-e CLIENT_B_PASS="$CLIENT_B_PASS")
+fi
+if [ -n "$CLIENT_B_IP" ]; then
+    LDAP_ENV+=(-e CLIENT_B_IP="$CLIENT_B_IP")
+fi
+if [ -n "$CLIENT_B_DNS1" ]; then
+    LDAP_ENV+=(-e CLIENT_B_DNS1="$CLIENT_B_DNS1")
+fi
+if [ -n "$CLIENT_B_DNS2" ]; then
+    LDAP_ENV+=(-e CLIENT_B_DNS2="$CLIENT_B_DNS2")
+fi
+if [ -n "$CLIENT_B_RATE_DOWN" ]; then
+    LDAP_ENV+=(-e CLIENT_B_RATE_DOWN="$CLIENT_B_RATE_DOWN")
+fi
+if [ -n "$CLIENT_B_RATE_UP" ]; then
+    LDAP_ENV+=(-e CLIENT_B_RATE_UP="$CLIENT_B_RATE_UP")
+fi
+
+cat scripts/script_ldap.sh | docker exec -i "${LDAP_ENV[@]}" services${SERVICES_ID}_ldap bash &
+cat scripts/script_radius.sh | docker exec -i services${SERVICES_ID}_radius bash &
+cat scripts/script_iperf.sh | docker exec -i services${SERVICES_ID}_iperf bash &
 
 echo "Réseau ServicesFAI ${SERVICES_ID} démarré (120.0.32.64/28)"

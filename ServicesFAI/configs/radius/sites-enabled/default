@@ -1,0 +1,60 @@
+server default {
+    listen {
+        type = auth
+        ipaddr = *
+        port = 1812
+    }
+
+    listen {
+        type = acct
+        ipaddr = *
+        port = 1813
+    }
+
+    authorize {
+        preprocess
+        chap
+        mschap
+        suffix
+
+        # Auth + reply attributes come from LDAP.
+        files
+        ldap
+
+        if (ok || updated) {
+            update control {
+                Auth-Type := LDAP
+            }
+        }
+
+        pap
+    }
+
+    authenticate {
+        Auth-Type LDAP {
+            ldap
+        }
+
+        Auth-Type PAP {
+            pap
+        }
+    }
+
+    preacct {
+        preprocess
+        acct_unique
+        suffix
+        files
+    }
+
+    accounting {
+        sql
+    }
+
+    session {
+    }
+
+    post-auth {
+        reply_log
+    }
+}

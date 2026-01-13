@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        nginx \
+        nginx ldap-utils \
         iproute2 iputils-ping net-tools curl \
     && rm -rf /var/lib/apt/lists/*
 

@@ -2,16 +2,27 @@
 
 # Script de démarrage du réseau FAI
 # On passe en root
-if [ "$EUID" -ne 0 ]; then
-    echo "Ce script nécessite les droits root pour fonctionner."
-    echo "Passage en mode root..."
-    exec sudo "$0" "$@"
-fi
 
 
 
 # On se place dans le répertoire du script
 cd "$(dirname "$0")"
+
+# Identifiants PPP pour les clients A/B (utilisés par les boxes)
+PPP_A_USER="alice"
+PPP_A_PASS="alicepass"
+PPP_B_USER="bob"
+PPP_B_PASS="bobpass"
+CLIENT_A_IP="120.0.35.100"
+CLIENT_B_IP="120.0.35.101"
+CLIENT_A_DNS1="120.0.32.66"
+CLIENT_B_DNS1="120.0.32.66"
+CLIENT_A_DNS2="120.0.32.67"
+CLIENT_B_DNS2="120.0.32.67"
+CLIENT_A_RATE_DOWN="20000"
+CLIENT_A_RATE_UP="5000"
+CLIENT_B_RATE_DOWN="10000"
+CLIENT_B_RATE_UP="2000"
 
 # Construction des images dockers
 docker build -q -t frr ./images/frr
@@ -20,8 +31,12 @@ docker build -q -t frr ./images/frr
 #   $1: Nom du Docker
 #   $2: Nom de l'image utilisée
 dockerStart() {
+    local extra_args=""
+    if [ "$1" = "fai_peParticulier" ]; then
+        extra_args="-v /lib/modules:/lib/modules:ro"
+    fi
     # commenté "> /dev/null 2>&1" si vous voulez le nom de l'image
-    docker create -it --name $1 --hostname $1 --network none --privileged $2 > /dev/null 2>&1 
+    docker create -it --name $1 --hostname $1 --network none --privileged $extra_args $2 > /dev/null 2>&1 
     docker start $1
 
     # Ajout du namespace du container docker à la liste netns
@@ -80,24 +95,24 @@ chmod 640 /etc/frr/*.conf /etc/frr/daemons
 # == RESEAU ACCES PARTICULIER ==
 
 # Creation du switch particulier
-ip netns add fai_particulierSwitch 
-ip netns exec fai_particulierSwitch ip link add name br0 type bridge
+sudo ip netns add fai_particulierSwitch 
+sudo ip netns exec fai_particulierSwitch ip link add name br0 type bridge
 
 # Connexion des réseaux particuliers au switch
-../particulier/start.sh A fai_particulierSwitch eth1
-../particulier/start.sh B fai_particulierSwitch eth2
+../particulier/start.sh A "$PPP_A_USER" "$PPP_A_PASS" fai_particulierSwitch eth1
+../particulier/start.sh B "$PPP_B_USER" "$PPP_B_PASS" fai_particulierSwitch eth2
 
 # Connexion du switch au peParticulier
 addLink fai_peParticulier eth1 fai_particulierSwitch eth0
 
 # Connexions des interfaces au bridge
-ip netns exec fai_particulierSwitch ip link set eth0 master br0
-ip netns exec fai_particulierSwitch ip link set eth1 master br0
-ip netns exec fai_particulierSwitch ip link set eth2 master br0
-ip netns exec fai_particulierSwitch ip link set eth0 up
-ip netns exec fai_particulierSwitch ip link set eth1 up
-ip netns exec fai_particulierSwitch ip link set eth2 up
-ip netns exec fai_particulierSwitch ip link set br0 up
+sudo ip netns exec fai_particulierSwitch ip link set eth0 master br0
+sudo ip netns exec fai_particulierSwitch ip link set eth1 master br0
+sudo ip netns exec fai_particulierSwitch ip link set eth2 master br0
+sudo ip netns exec fai_particulierSwitch ip link set eth0 up
+sudo ip netns exec fai_particulierSwitch ip link set eth1 up
+sudo ip netns exec fai_particulierSwitch ip link set eth2 up
+sudo ip netns exec fai_particulierSwitch ip link set br0 up
 
 # Backbone
 addLink fai_routeurToulouse eth0 fai_routeurBordeaux eth1
@@ -111,14 +126,20 @@ addLink fai_routeurParis eth3 fai_routeurLyon eth0
 addLink fai_routeurParis eth4 fai_routeurBordeaux eth0
 
 # == RESEAU Service ==
+CLIENT_A_USER="$PPP_A_USER" CLIENT_A_PASS="$PPP_A_PASS" \
+CLIENT_A_IP="$CLIENT_A_IP" CLIENT_A_DNS1="$CLIENT_A_DNS1" CLIENT_A_DNS2="$CLIENT_A_DNS2" \
+CLIENT_A_RATE_DOWN="$CLIENT_A_RATE_DOWN" CLIENT_A_RATE_UP="$CLIENT_A_RATE_UP" \
+CLIENT_B_USER="$PPP_B_USER" CLIENT_B_PASS="$PPP_B_PASS" \
+CLIENT_B_IP="$CLIENT_B_IP" CLIENT_B_DNS1="$CLIENT_B_DNS1" CLIENT_B_DNS2="$CLIENT_B_DNS2" \
+CLIENT_B_RATE_DOWN="$CLIENT_B_RATE_DOWN" CLIENT_B_RATE_UP="$CLIENT_B_RATE_UP" \
 ../ServicesFAI/start.sh A
-ip netns exec servicesA_switch ip link set router1 name eth1 netns fai_peService
+sudo ip netns exec servicesA_switch ip link set router1 name eth1 netns fai_peService
 
 # == RESEAU Entreprise ==
-../entreprise/start.sh RH
+#../entreprise/start.sh RH
 
-addLink entreprise_routeur_public eth0 fai_peEntreprise  eth1
-echo "Réseau Entreprise connecté"
+#addLink entreprise_routeur_public eth0 fai_peEntreprise  eth1
+#echo "Réseau Entreprise connecté"
 
 # Ajouter les connexions Réseau d'acces Entreprise et réseau d'acces Service après le merge
 
@@ -127,6 +148,7 @@ echo "Réseau Entreprise connecté"
 
 # On ajoute les fichiers de config aux dockers
 docker cp configs/peParticulier/dhcpd.conf fai_peParticulier:/etc/dhcp/
+docker cp configs/peParticulier/accel-ppp.conf fai_peParticulier:/etc/accel-ppp.conf
 
 docker cp configs/peEntreprise/ospfd.conf fai_peEntreprise:/etc/frr/
 docker cp configs/peParticulier/ospfd.conf fai_peParticulier:/etc/frr/
