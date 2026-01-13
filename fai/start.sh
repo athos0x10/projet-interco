@@ -2,7 +2,11 @@
 
 # Script de démarrage du réseau FAI
 # On passe en root
-
+if [ "$EUID" -ne 0 ]; then
+    echo "Ce script nécessite les droits root pour fonctionner."
+    echo "Passage en mode root..."
+    exec sudo "$0" "$@"
+fi
 
 
 # On se place dans le répertoire du script
@@ -136,10 +140,10 @@ CLIENT_B_RATE_DOWN="$CLIENT_B_RATE_DOWN" CLIENT_B_RATE_UP="$CLIENT_B_RATE_UP" \
 sudo ip netns exec servicesA_switch ip link set router1 name eth1 netns fai_peService
 
 # == RESEAU Entreprise ==
-#../entreprise/start.sh RH
+../entreprise/start.sh RH
 
-#addLink entreprise_routeur_public eth0 fai_peEntreprise  eth1
-#echo "Réseau Entreprise connecté"
+addLink entreprise_routeur_public eth0 fai_peEntreprise  eth1
+echo "Réseau Entreprise connecté"
 
 # Ajouter les connexions Réseau d'acces Entreprise et réseau d'acces Service après le merge
 
