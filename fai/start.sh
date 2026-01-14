@@ -59,6 +59,7 @@ dockerStart fai_routeurBordure frr
 dockerStart fai_peService frr
 dockerStart fai_peEntreprise frr
 
+dockerStart testbgp frr 
 
 # ============== Connexion des dockers ==================
 
@@ -129,6 +130,9 @@ addLink fai_routeurParis eth2 fai_peService eth0
 addLink fai_routeurParis eth3 fai_routeurLyon eth0
 addLink fai_routeurParis eth4 fai_routeurBordeaux eth0
 
+addLink fai_routeurBordure eth0 testbgp eth0
+
+
 # == RESEAU Service ==
 CLIENT_A_USER="$PPP_A_USER" CLIENT_A_PASS="$PPP_A_PASS" \
 CLIENT_A_IP="$CLIENT_A_IP" CLIENT_A_DNS1="$CLIENT_A_DNS1" CLIENT_A_DNS2="$CLIENT_A_DNS2" \
@@ -165,6 +169,8 @@ docker cp configs/routeurLyon/ospfd.conf fai_routeurLyon:/etc/frr/
 docker cp configs/routeurParis/ospfd.conf fai_routeurParis:/etc/frr/
 docker cp configs/routeurToulouse/ospfd.conf fai_routeurToulouse:/etc/frr/
 
+docker cp test/frr.conf testbgp:/etc/frr/
+
 configureFrr fai_peEntreprise
 configureFrr fai_peParticulier
 configureFrr fai_peService
@@ -174,6 +180,7 @@ configureFrr fai_routeurLyon
 configureFrr fai_routeurParis
 configureFrr fai_routeurToulouse
 
+configureFrr testbgp
 
 
 # ================= Script de démarrage ======================
@@ -187,6 +194,9 @@ docker exec -i fai_routeurLyon bash < scripts/routeurLyon.sh > /dev/null 2>&1 &
 docker exec -i fai_routeurParis bash < scripts/routeurParis.sh > /dev/null 2>&1 &
 docker exec -i fai_routeurToulouse bash < scripts/routeurToulouse.sh > /dev/null 2>&1 &
 echo "Le réseau FAI a été créé"
+
+docker exec -i testbgp bash < test/testbgp.sh > /dev/null 2>&1 &
+
 
 wait
 echo "Tous les scripts ont été executé !"
