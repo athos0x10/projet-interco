@@ -15,6 +15,8 @@ sysctl -w net.ipv4.ip_forward=1
 sysctl -w net.ipv4.conf.all.rp_filter=0
 sysctl -w net.ipv4.conf.default.rp_filter=0
 
+sed -i 's/bgpd=no/bgpd=yes/' /etc/frr/daemons
 /usr/lib/frr/watchfrr.sh restart zebra ospfd
+/usr/lib/frr/watchfrr.sh start bgpd
 sleep 1
 vtysh -b /etc/frr/frr.conf
